@@ -1,0 +1,1 @@
+This holds the documentation for Ratify - A payment platform for the Nigeria Association of Computing Students, ABU, Zaria dues. 
