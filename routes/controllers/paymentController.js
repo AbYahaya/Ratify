@@ -46,14 +46,9 @@ exports.handleCallback = async (req, res) => {
     try {
         const { reference } = req.body;
 
-        // Verify payment with Paystack
-        const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
-            headers: {
-                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-            },
-        });
-
-        const status = response.data.data.status;
+        // Call PaystackService to verify payment
+        const paystackResponse = await PaystackService.verifyPayment(reference);
+        const status = paystackResponse.data.status;
 
         // Update transaction status in database
         const transaction = await Transaction.findOneAndUpdate(
@@ -67,8 +62,14 @@ exports.handleCallback = async (req, res) => {
         }
 
         if (status === 'success') {
-            // Generate PDF receipt (not implemented here)
-            res.status(200).json({ message: 'Payment successful', transaction });
+            // Generate PDF receipt
+            const receiptPath = await generateReceipt(transaction);
+
+            res.status(200).json({
+                message: 'Payment successful',
+                receipt_url: `${req.protocol}://${req.get('host')}/${receiptPath}`,
+                transaction,
+            });
         } else {
             res.status(400).json({ message: 'Payment failed', transaction });
         }
