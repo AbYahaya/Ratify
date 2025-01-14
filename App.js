@@ -28,6 +28,7 @@ mongoose.connect(process.env.MONGO_URI, {
 // Routes
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/receipts', express.static('receipts'));
 
 // Default Route
 app.get('/', (req, res) => {

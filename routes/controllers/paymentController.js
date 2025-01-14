@@ -1,5 +1,6 @@
 const axios = require('axios');
 const Transaction = require('../models/transactionModel');
+const generate = require('../utils/pdfGenerator');
 
 // Controller for initiating payment
 exports.initiatePayment = async (req, res) => {
