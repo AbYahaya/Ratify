@@ -1,12 +1,16 @@
 const axios = require('axios');
-const Transaction = require('../models/transactionModel');
+const Transaction = require('../models/Transaction');
 const generate = require('../utils/pdfGenerator');
 
 // Controller for initiating payment
 exports.initiatePayment = async (req, res) => {
     try {
         const { name, email, amount } = req.body;
-        
+
+        if (!name || !email || !amount) {
+            return res.status(400).json({ error: 'Name, email, and amount are required' });
+        }
+
         // Prepare data for Paystack payment initialization
         const paystackData = {
             email,
@@ -46,9 +50,14 @@ exports.handleCallback = async (req, res) => {
     try {
         const { reference } = req.body;
 
-        // Call PaystackService to verify payment
-        const paystackResponse = await PaystackService.verifyPayment(reference);
-        const status = paystackResponse.data.status;
+        // Verify payment with Paystack
+        const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
+            headers: {
+                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+            },
+        });
+
+        const status = response.data.data.status;
 
         // Update transaction status in database
         const transaction = await Transaction.findOneAndUpdate(
@@ -63,7 +72,7 @@ exports.handleCallback = async (req, res) => {
 
         if (status === 'success') {
             // Generate PDF receipt
-            const receiptPath = await generateReceipt(transaction);
+            const receiptPath = await generate(transaction);
 
             res.status(200).json({
                 message: 'Payment successful',
