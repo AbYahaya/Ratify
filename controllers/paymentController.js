@@ -1,5 +1,5 @@
 const PaystackService = require('../utils/PaystackService');
-const Transaction = require('../models/Transaction');
+const Transaction = require('../models/transactionModel');
 const generateReceipt = require('../utils/pdfGenerator');
 
 // Initiates a payment
