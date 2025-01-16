@@ -1,8 +1,8 @@
-const axios = require('axios');
+const PaystackService = require('../utils/PaystackService');
 const Transaction = require('../models/Transaction');
-const generate = require('../utils/pdfGenerator');
+const generateReceipt = require('../utils/pdfGenerator');
 
-// Controller for initiating payment
+// Initiates a payment
 exports.initiatePayment = async (req, res) => {
     try {
         const { name, email, amount } = req.body;
@@ -11,53 +11,39 @@ exports.initiatePayment = async (req, res) => {
             return res.status(400).json({ error: 'Name, email, and amount are required' });
         }
 
-        // Prepare data for Paystack payment initialization
-        const paystackData = {
-            email,
-            amount: amount * 100, // Convert amount to kobo
-            callback_url: process.env.PAYSTACK_CALLBACK_URL,
-        };
+        // Initialize payment via Paystack
+        const paystackResponse = await PaystackService.initializePayment(name, email, amount);
+        const { authorization_url, reference } = paystackResponse.data;
 
-        // Send request to Paystack API
-        const response = await axios.post('https://api.paystack.co/transaction/initialize', paystackData, {
-            headers: {
-                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-            },
-        });
-
-        // Save transaction to database
+        // Save transaction details in database
         const transaction = new Transaction({
+            reference,
             name,
             email,
             amount,
-            reference: response.data.data.reference,
             status: 'pending',
         });
         await transaction.save();
 
-        res.status(200).json({
-            message: 'Payment initiated successfully',
-            authorization_url: response.data.data.authorization_url,
-        });
+        res.status(200).json({ authorization_url, reference });
     } catch (error) {
-        console.error('Error initiating payment:', error);
+        console.error('Error initiating payment:', error.message || error);
         res.status(500).json({ error: 'Failed to initiate payment' });
     }
 };
 
-// Controller for handling payment callback
+// Handles payment callback
 exports.handleCallback = async (req, res) => {
     try {
         const { reference } = req.body;
 
-        // Verify payment with Paystack
-        const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
-            headers: {
-                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-            },
-        });
+        if (!reference) {
+            return res.status(400).json({ error: 'Payment reference is required' });
+        }
 
-        const status = response.data.data.status;
+        // Verify payment with Paystack
+        const paystackResponse = await PaystackService.verifyPayment(reference);
+        const status = paystackResponse.data.status;
 
         // Update transaction status in database
         const transaction = await Transaction.findOneAndUpdate(
@@ -72,7 +58,7 @@ exports.handleCallback = async (req, res) => {
 
         if (status === 'success') {
             // Generate PDF receipt
-            const receiptPath = await generate(transaction);
+            const receiptPath = await generateReceipt(transaction);
 
             res.status(200).json({
                 message: 'Payment successful',
@@ -83,7 +69,7 @@ exports.handleCallback = async (req, res) => {
             res.status(400).json({ message: 'Payment failed', transaction });
         }
     } catch (error) {
-        console.error('Error handling payment callback:', error);
+        console.error('Error handling payment callback:', error.message || error);
         res.status(500).json({ error: 'Failed to process payment callback' });
     }
 };
