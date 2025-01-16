@@ -76,3 +76,7 @@ describe('Payment Controller - initiatePayment', () => {
         expect(res.body.error).toBe('Failed to initiate payment');
     });
 });
+
+afterAll(async () => {
+    await mongoose.connection.close();
+});
