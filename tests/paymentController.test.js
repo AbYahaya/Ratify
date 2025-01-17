@@ -1,6 +1,7 @@
 const request = require('supertest');
 const app = require('../app'); // Your Express app
 const mockingoose = require('mockingoose');
+const mongoose = require('mongoose');
 const Transaction = require('../models/transactionModel');
 const axios = require('axios');
 
