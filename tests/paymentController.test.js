@@ -4,26 +4,33 @@ const mockingoose = require('mockingoose');
 const mongoose = require('mongoose');
 const Transaction = require('../models/transactionModel');
 const axios = require('axios');
-const nock = require('nock'); // Import nock
+
+beforeEach(() => {
+    jest.spyOn(console, 'error').mockImplementation(() => {}); // Suppress error logs
+});
+
+afterEach(() => {
+    jest.restoreAllMocks(); // Restore original console behavior
+});
 
 jest.mock('axios');
 
 describe('Payment Controller - initiatePayment', () => {
     beforeEach(() => {
         jest.clearAllMocks(); // Clear mocks before each test
-        nock.cleanAll(); // Clear all nock interceptors before each test
     });
 
     it('should initiate payment successfully', async () => {
-        // Mock Paystack API response using nock
-        nock('https://api.paystack.co')
-            .post('/transaction/initialize')
-            .reply(200, {
+        // Correctly mock Paystack API response
+        axios.post.mockResolvedValue({
+            data: {
                 data: {
                     authorization_url: 'http://test-authorization-url.com',
                     reference: 'test_reference',
                 },
-            });
+            },
+
+        });
 
         // Mock Mongoose Transaction save
         mockingoose(Transaction).toReturn(
@@ -62,13 +69,7 @@ describe('Payment Controller - initiatePayment', () => {
     });
 
     it('should return 500 if Paystack API call fails', async () => {
-        // Mock Paystack API error using nock
-        nock('https://api.paystack.co')
-            .post('/transaction/initialize')
-            .reply(500, {
-                status: false,
-                message: 'Paystack error',
-            });
+        axios.post.mockRejectedValue(new Error('Paystack error'));
 
         const paymentData = {
             name: 'John Doe',

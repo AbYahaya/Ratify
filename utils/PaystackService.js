@@ -18,12 +18,15 @@ const PaystackService = {
                     },
                 }
             );
+            console.log('Paystack Response:', response.data);
 
             return response.data;
         } catch (error) {
-            console.error('Error initializing payment:', error);
-            throw new Error('Failed to initialize payment');
-        }
+            console.error('Error initializing payment:', error.message || error);
+            if (error.response) {
+                console.error('Paystack API error:', error.response.data      
+                )}
+                throw new Error('Failed to initialize payment');}
     },
 
     verifyPayment: async (reference) => {
