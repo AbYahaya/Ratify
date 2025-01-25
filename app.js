@@ -13,6 +13,7 @@ const app = express();
 //const PORT = process.env.PORT || 3000;
 
 // Middleware
+app.use(express.json()); // Add this to your server setup if not already in place
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));

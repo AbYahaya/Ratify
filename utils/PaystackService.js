@@ -3,30 +3,29 @@ const axios = require('axios');
 const PaystackService = {
     initializePayment: async (email, amount, callbackUrl) => {
         try {
-            const data = {
-                email,
-                amount: amount * 100, // Convert to kobo (smallest unit)
-                callback_url: callbackUrl,
-            };
-
             const response = await axios.post(
                 'https://api.paystack.co/transaction/initialize',
-                data,
+                {
+                    email,
+                    amount: amount * 100, // Convert to kobo
+                    callback_url: callbackUrl,
+                },
                 {
                     headers: {
                         Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+                        'Content-Type': 'application/json',
                     },
                 }
             );
-            console.log('Paystack Response:', response.data);
-
+            console.log('Paystack Response:', response.data); // Add this for debugging
             return response.data;
         } catch (error) {
-            console.error('Error initializing payment:', error.message || error);
+            console.error('Paystack initialization error:', error.response?.data || error.message);
             if (error.response) {
-                console.error('Paystack API error:', error.response.data      
-                )}
-                throw new Error('Failed to initialize payment');}
+                console.log('Full error response from Paystack:', error.response.data);
+            }
+            throw new Error('Error initializing payment with Paystack');
+        }
     },
 
     verifyPayment: async (reference) => {
@@ -39,11 +38,10 @@ const PaystackService = {
                     },
                 }
             );
-
             return response.data;
         } catch (error) {
-            console.error('Error verifying payment:', error);
-            throw new Error('Failed to verify payment');
+            console.error('Paystack verification error:', error.response?.data || error.message);
+            throw new Error('Error verifying payment with Paystack');
         }
     },
 };

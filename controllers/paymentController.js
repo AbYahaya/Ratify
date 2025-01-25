@@ -2,45 +2,31 @@ const PaystackService = require('../utils/PaystackService');
 const Transaction = require('../models/transactionModel');
 const generateReceipt = require('../utils/pdfGenerator');
 
-//const PaystackService = require('../utils/PaystackService');
-//const Transaction = require('../models/transactionModel');
-//const generateReceipt = require('../utils/pdfGenerator');
-
 // Initiates a payment
 exports.initiatePayment = async (req, res) => {
     try {
         const { name, email, amount } = req.body;
 
-        // Validate required fields
         if (!name || !email || !amount) {
             return res.status(400).json({ error: 'Name, email, and amount are required' });
         }
 
-        // Initialize payment via Paystack
-        const paystackResponse = await PaystackService.initializePayment(name, email, amount);
+        const paystackResponse = await PaystackService.initializePayment(email, amount, process.env.PAYSTACK_CALLBACK_URL);
+        console.log('Full Paystack response:', paystackResponse); // Log entire response for debugging
 
-        // Ensure Paystack response contains necessary fields
         if (!paystackResponse || !paystackResponse.data || !paystackResponse.data.authorization_url || !paystackResponse.data.reference) {
             throw new Error('Invalid Paystack response');
         }
 
         const { authorization_url, reference } = paystackResponse.data;
 
-        // Save transaction details in database
-        const transaction = new Transaction({
-            reference,
-            name,
-            email,
-            amount,
-            status: 'pending',
-        });
+        const transaction = new Transaction({ reference, name, email, amount, status: 'pending' });
         await transaction.save();
 
         res.status(200).json({ authorization_url, reference });
     } catch (error) {
         console.error('Error initiating payment:', error.message || error);
         res.status(500).json({ error: 'Failed to initiate payment' });
-        console.error('Paystack API error:', error.response ? error.response.data : error.message);
     }
 };
 
@@ -53,11 +39,11 @@ exports.handleCallback = async (req, res) => {
             return res.status(400).json({ error: 'Payment reference is required' });
         }
 
-        // Verify payment with Paystack
         const paystackResponse = await PaystackService.verifyPayment(reference);
-        const status = paystackResponse.data.status;
+        console.log('Paystack Verification Response:', paystackResponse); // Log the verification response
 
-        // Update transaction status in database
+        const status = paystackResponse.status;
+
         const transaction = await Transaction.findOneAndUpdate(
             { reference },
             { status },
@@ -69,7 +55,6 @@ exports.handleCallback = async (req, res) => {
         }
 
         if (status === 'success') {
-            // Generate PDF receipt
             const receiptPath = await generateReceipt(transaction);
 
             res.status(200).json({
