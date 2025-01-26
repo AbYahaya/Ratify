@@ -6,6 +6,6 @@ const paymentController = require('../controllers/paymentController');
 router.post('/initiate', paymentController.initiatePayment);
 
 // Route for handling payment callbacks (webhook)
-router.post('/callback', paymentController.handleCallback);
+router.all('/callback', paymentController.handleCallback);
 
 module.exports = router;

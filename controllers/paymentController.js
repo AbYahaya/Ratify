@@ -11,7 +11,7 @@ exports.initiatePayment = async (req, res) => {
             return res.status(400).json({ error: 'Name, email, and amount are required' });
         }
 
-        const paystackResponse = await PaystackService.initializePayment(email, amount, process.env.PAYSTACK_CALLBACK_URL);
+        const paystackResponse = await PaystackService.initializePayment(email, amount, `${process.env.PAYSTACK_CALLBACK_URL}/api/v1/payments/callback`);
         console.log('Full Paystack response:', paystackResponse); // Log entire response for debugging
 
         if (!paystackResponse || !paystackResponse.data || !paystackResponse.data.authorization_url || !paystackResponse.data.reference) {
@@ -32,6 +32,12 @@ exports.initiatePayment = async (req, res) => {
 
 // Handles payment callback
 exports.handleCallback = async (req, res) => {
+    if (req.method === 'GET') {
+        console.log('Received a GET request to the callback URL');
+        return res.status(200).send('Callback URL is valid');
+    }
+
+    // Proceed with POST request handling as per the payment logic
     try {
         const { reference } = req.body;
 

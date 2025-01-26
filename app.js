@@ -40,6 +40,11 @@ app.use((err, req, res, next) => {
     res.status(500).send({ error: 'Something went wrong!' });
 });
 
+// 404 Fallback
+app.use((req, res) => {
+    res.status(404).send('Route not found');
+});
+
 // Start Server
 //app.listen(PORT, () => {
 //    console.log(`Server running on http://localhost:${PORT}`);
