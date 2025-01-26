@@ -20,15 +20,43 @@ const generateReceipt = (transaction) => {
             const stream = fs.createWriteStream(filePath);
             doc.pipe(stream);
 
-            // Add content to the PDF
-            doc.fontSize(20).text('Payment Receipt', { align: 'center' });
+            // Add styles to the PDF
+            // Header with association name
+            doc
+                .font('Times-Italic')
+                .fontSize(24)
+                .fillColor('#007BFF') // Set color to a blue shade
+                .text('Nigeria Association of Computing Students, ABU', { align: 'center' });
+
             doc.moveDown();
-            doc.fontSize(14).text(`Reference: ${transaction.reference}`);
+
+            // Subtitle
+            doc
+                .fontSize(16)
+                .fillColor('black') // Reset color to black
+                .text('Payment Receipt', { align: 'center' });
+
+            doc.moveDown(2);
+
+            // Transaction details
+            doc
+                .font('Helvetica')
+                .fontSize(14)
+                .fillColor('#333333'); // Dark gray text color
+
+            doc.text(`Reference: ${transaction.reference}`);
             doc.text(`Name: ${transaction.name}`);
             doc.text(`Email: ${transaction.email}`);
             doc.text(`Amount: ₦${(transaction.amount / 100).toFixed(2)}`);
             doc.text(`Status: ${transaction.status}`);
             doc.text(`Date: ${new Date(transaction.createdAt).toLocaleString()}`);
+
+            // Footer
+            doc.moveDown(2);
+            doc
+                .fontSize(10)
+                .fillColor('#555555') // Lighter gray for the footer
+                .text('Thank you for your payment!', { align: 'center' });
 
             doc.end();
 
