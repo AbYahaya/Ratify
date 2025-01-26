@@ -1,4 +1,4 @@
-Project Overview
+
 This project is currently a backend-only Payment and Receipt Generation System for the Nigeria Association of Computing Students, ABU, designed with the following key features:
 
 - Secure payment processing using the Paystack API.
