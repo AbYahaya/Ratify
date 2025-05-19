@@ -3,13 +3,13 @@ const Transaction = require('../models/transactionModel');
 // Admin login route
 exports.adminLogin = (req, res) => {
     const { password } = req.body;
-
+  
     if (password === process.env.ADMIN_PASSWORD) {
-        res.status(200).json({ message: 'Login successful' });
+      res.status(200).json({ success: true });
     } else {
-        res.status(401).json({ error: 'Unauthorized: Invalid password' });
+      res.status(401).json({ success: false, error: 'Unauthorized: Invalid password' });
     }
-};
+  };
 
 // Fetch all transactions
 exports.getAllTransactions = async (req, res) => {

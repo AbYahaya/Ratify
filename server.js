@@ -5,14 +5,20 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const path = require('path');
+const cors = require('cors');
+
+
 
 const paymentRoutes = require('./routes/paymentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const withdrawalRoutes = require('./routes/withdrawalRoutes');
+const accountRoutes = require('./routes/accountRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
+app.use(cors());
 app.use(express.json()); // Add this to your server setup if not already in place
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -28,6 +34,8 @@ mongoose.connect(process.env.MONGO_URI)
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/receipts', express.static('receipts'));
+app.use('/api/withdrawals', withdrawalRoutes);
+app.use('/api/account', accountRoutes);
 
 // Default Route
 app.get('/', (req, res) => {

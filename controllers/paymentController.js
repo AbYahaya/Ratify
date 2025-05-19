@@ -45,21 +45,18 @@ exports.initiatePayment = async (req, res) => {
 exports.handleCallback = async (req, res) => {
     if (req.method === 'GET') {
         console.log('Received a GET request to the callback URL');
-        const { reference } = req.query; // Extract reference from query params
+        const { reference } = req.query;
 
         if (!reference) {
-            return res.status(400).json({ error: 'Payment reference is missing' });
+            return res.status(400).send('Payment reference is missing');
         }
 
         try {
             const paystackResponse = await PaystackService.verifyPayment(reference);
-            console.log('Paystack Verification Response:', paystackResponse);
-
-            const validStatuses = ['success', 'failed', 'pending'];
             const status = paystackResponse.data.status;
 
-            if (!validStatuses.includes(status)) {
-                return res.status(400).json({ error: 'Invalid payment status received' });
+            if (!['success', 'failed', 'pending'].includes(status)) {
+                return res.status(400).send('Invalid payment status received');
             }
 
             const transaction = await Transaction.findOneAndUpdate(
@@ -69,26 +66,24 @@ exports.handleCallback = async (req, res) => {
             );
 
             if (!transaction) {
-                return res.status(404).json({ error: 'Transaction not found' });
+                return res.status(404).send('Transaction not found');
             }
 
             if (status === 'success') {
                 const receiptPath = await generateReceipt(transaction);
+                const frontendRedirectUrl = `${process.env.FRONTEND_URL}/payment-success?receipt_url=${encodeURIComponent(`${req.protocol}://${req.get('host')}/${receiptPath}`)}&reference=${reference}`;
 
-                return res.status(200).json({
-                    message: 'Payment successful',
-                    receipt_url: `${req.protocol}://${req.get('host')}/${receiptPath}`,
-                    transaction,
-                });
+                return res.redirect(frontendRedirectUrl);
             } else {
-                return res.status(400).json({ message: 'Payment failed', transaction });
+                return res.redirect(`${process.env.FRONTEND_URL}/payment-failed?reference=${reference}`);
             }
         } catch (error) {
-            console.error('Error handling GET callback:', error.message || error);
-            return res.status(500).json({ error: 'Failed to process payment callback' });
+            console.error('Error handling callback:', error.message || error);
+            return res.status(500).send('Internal server error during callback');
         }
     }
 
-    return res.status(405).send('Method Not Allowed'); // For non-GET methods
+    return res.status(405).send('Method Not Allowed');
 };
+
 
