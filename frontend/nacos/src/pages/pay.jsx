@@ -2,7 +2,12 @@ import React, { useState } from 'react';
 import axios from 'axios';
 
 const Pay = () => {
-  const [formData, setFormData] = useState({ name: '', email: '', amount: '' });
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    amount: '',
+    purpose: 'NACOS levy'  // Default value
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -69,6 +74,20 @@ const Pay = () => {
               onChange={handleChange}
               required
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+            <select
+              name="purpose"
+              value={formData.purpose}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="NACOS levy">NACOS levy</option>
+              <option value="Donation">Donation</option>
+            </select>
           </div>
 
           <button

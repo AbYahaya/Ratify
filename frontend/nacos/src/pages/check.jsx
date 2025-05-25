@@ -41,7 +41,9 @@ const StatusPage = () => {
       <div className="w-full max-w-3xl bg-white p-8 rounded-xl shadow-md">
         <h2 className="text-3xl font-bold text-blue-700 mb-6 text-center">Check Account Status</h2>
 
+        {/* FORM */}
         <form onSubmit={handleSubmit} className="space-y-5 mb-10">
+          {/* Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
             <input
@@ -53,6 +55,8 @@ const StatusPage = () => {
               required
             />
           </div>
+
+          {/* Reference */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Transaction Reference</label>
             <input
@@ -76,12 +80,14 @@ const StatusPage = () => {
 
         {error && <p className="text-red-500 text-center mb-6">{error}</p>}
 
+        {/* ACCOUNT INFO */}
         {accountInfo && (
           <div className="space-y-8">
             <div className="text-xl font-semibold text-green-700 border-b pb-2">
               💰 Total Balance: ₦{accountInfo.balance.toLocaleString()}
             </div>
 
+            {/* PAYMENTS */}
             <div>
               <h3 className="text-xl font-bold mb-3 text-blue-800">Payments</h3>
               {accountInfo.payments.length > 0 ? (
@@ -95,6 +101,9 @@ const StatusPage = () => {
                           {new Date(tx.date).toLocaleDateString()}
                         </span>
                       </div>
+                      <div className="text-sm text-gray-700 mt-1">
+                        Purpose: <em>{tx.purpose}</em>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -103,6 +112,7 @@ const StatusPage = () => {
               )}
             </div>
 
+            {/* WITHDRAWALS */}
             <div>
               <h3 className="text-xl font-bold mb-3 text-red-800">Withdrawals</h3>
               {accountInfo.withdrawals.length > 0 ? (

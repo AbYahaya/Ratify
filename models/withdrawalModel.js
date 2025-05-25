@@ -1,22 +1,21 @@
 const mongoose = require('mongoose');
 
-const withdrawalSchema = new mongoose.Schema({
-  amount: {
-    type: Number,
-    required: true,
+const withdrawalSchema = new mongoose.Schema(
+  {
+    amount: {
+      type: Number,
+      required: true,
+    },
+    purpose: {
+      type: String,
+      required: true,
+    },
+    madeBy: {
+      type: String,
+      default: 'Admin',
+    },
   },
-  purpose: {
-    type: String,
-    required: true,
-  },
-  madeBy: {
-    type: String, // Optional: who initiated the withdrawal
-    default: 'Admin',
-  },
-  date: {
-    type: Date,
-    default: Date.now,
-  }
-});
+  { timestamps: true } // ✅ This adds createdAt and updatedAt automatically
+);
 
 module.exports = mongoose.model('Withdrawal', withdrawalSchema);

@@ -15,31 +15,43 @@ const verifyWebhookSignature = (req) => {
 
 // Initiates a payment
 exports.initiatePayment = async (req, res) => {
-    try {
-        const { name, email, amount } = req.body;
+  try {
+    const { name, email, amount, purpose } = req.body;
 
-        if (!name || !email || !amount) {
-            return res.status(400).json({ error: 'Name, email, and amount are required' });
-        }
-
-        const paystackResponse = await PaystackService.initializePayment(email, amount, `${process.env.PAYSTACK_CALLBACK_URL}/api/payments/callback`);
-        console.log('Full Paystack response:', paystackResponse); // Log entire response for debugging
-
-        if (!paystackResponse || !paystackResponse.data || !paystackResponse.data.authorization_url || !paystackResponse.data.reference) {
-            throw new Error('Invalid Paystack response');
-        }
-
-        const { authorization_url, reference } = paystackResponse.data;
-
-        const transaction = new Transaction({ reference, name, email, amount, status: 'pending' });
-        await transaction.save();
-
-        res.status(200).json({ authorization_url, reference });
-    } catch (error) {
-        console.error('Error initiating payment:', error.message || error);
-        res.status(500).json({ error: 'Failed to initiate payment' });
+    if (!name || !email || !amount || !purpose) {
+      return res.status(400).json({ error: 'Name, email, amount, and purpose are required' });
     }
+
+    const paystackResponse = await PaystackService.initializePayment(
+      email,
+      amount,
+      `${process.env.PAYSTACK_CALLBACK_URL}/api/payments/callback`
+    );
+
+    if (!paystackResponse?.data?.authorization_url || !paystackResponse.data.reference) {
+      throw new Error('Invalid Paystack response');
+    }
+
+    const { authorization_url, reference } = paystackResponse.data;
+
+    const transaction = new Transaction({
+      reference,
+      name,
+      email,
+      amount,
+      purpose, // <-- include purpose here
+      status: 'pending'
+    });
+
+    await transaction.save();
+
+    res.status(200).json({ authorization_url, reference });
+  } catch (error) {
+    console.error('Error initiating payment:', error.message || error);
+    res.status(500).json({ error: 'Failed to initiate payment' });
+  }
 };
+
 
 // Handles payment callback
 exports.handleCallback = async (req, res) => {

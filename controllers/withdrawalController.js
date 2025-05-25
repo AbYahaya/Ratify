@@ -39,13 +39,46 @@ exports.createWithdrawal = async (req, res) => {
   }
 };
 
-// Get all withdrawals
 exports.getAllWithdrawals = async (req, res) => {
   try {
-    const withdrawals = await Withdrawal.find().sort({ date: -1 });
+    const { from, to } = req.query;
+    const query = {};
+
+    if (from || to) {
+      query.createdAt = {};
+      if (from) query.createdAt.$gte = new Date(from);
+      if (to) {
+        const endOfDay = new Date(to);
+        endOfDay.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = endOfDay;
+      }
+    }
+
+    const withdrawals = await Withdrawal.find(query).sort({ createdAt: -1 });
     res.status(200).json(withdrawals);
   } catch (error) {
     console.error('Error fetching withdrawals:', error);
     res.status(500).json({ error: 'Failed to fetch withdrawals' });
+  }
+};
+
+exports.getSummaryStats = async (req, res) => {
+  try {
+    const payments = await Transaction.find({ status: 'success' });
+
+    const withdrawals = await Withdrawal.find();
+
+    const totalPayments = payments.reduce((sum, tx) => sum + tx.amount, 0);
+    const totalWithdrawn = withdrawals.reduce((sum, w) => sum + w.amount, 0);
+    const balance = totalPayments - totalWithdrawn;
+
+    res.status(200).json({
+      totalPayments,
+      totalWithdrawn,
+      balance,
+    });
+  } catch (err) {
+    console.error('Error calculating summary stats:', err);
+    res.status(500).json({ error: 'Failed to compute summary statistics' });
   }
 };

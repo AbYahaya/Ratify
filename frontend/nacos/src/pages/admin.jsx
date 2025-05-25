@@ -7,6 +7,7 @@ const AdminPage = () => {
   const [transactions, setTransactions] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
   const [withdrawForm, setWithdrawForm] = useState({ amount: '', purpose: '', madeBy: '' });
+  const [filters, setFilters] = useState({ name: '', reference: '', from: '', to: '' });
   const [message, setMessage] = useState('');
 
   const handleLogin = async (e) => {
@@ -26,14 +27,51 @@ const AdminPage = () => {
 
   const fetchData = async () => {
     try {
-      const txRes = await axios.get('http://localhost:3000/api/admin/transactions');
-      const wdRes = await axios.get('http://localhost:3000/api/withdrawals');
+      const { name, reference, from, to } = filters;
+      const params = {};
+      if (name) params.name = name;
+      if (reference) params.reference = reference;
+      if (from) params.from = from;
+      if (to) params.to = to;
+
+      const txRes = await axios.get('http://localhost:3000/api/admin/transactions', { params });
+      const wdRes = await axios.get('http://localhost:3000/api/withdrawals', { params });
+      
+
       setTransactions(txRes.data);
       setWithdrawals(wdRes.data);
+      fetchSummary();
+
     } catch (err) {
       setMessage('Failed to load data');
     }
   };
+
+  const [summary, setSummary] = useState({ totalPayments: 0, totalWithdrawn: 0, balance: 0 });
+
+const fetchSummary = async () => {
+  try {
+    const res = await axios.get('http://localhost:3000/api/withdrawals/summary');
+    setSummary(res.data);
+  } catch (err) {
+    console.error('Failed to fetch summary:', err);
+  }
+};
+
+const handleExportPDF = () => {
+  const fromParam = filters.from ? `from=${filters.from}` : '';
+  const toParam = filters.to ? `to=${filters.to}` : '';
+  const query = [fromParam, toParam].filter(Boolean).join('&');
+  const url = `http://localhost:3000/api/admin/export-pdf${query ? `?${query}` : ''}`;
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'statement.pdf');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
 
   const handleWithdraw = async (e) => {
     e.preventDefault();
@@ -45,6 +83,15 @@ const AdminPage = () => {
     } catch (err) {
       setMessage('❌ Error adding withdrawal');
     }
+  };
+
+  const handleFilterChange = (e) => {
+    setFilters({ ...filters, [e.target.name]: e.target.value });
+  };
+
+  const handleFilterSubmit = (e) => {
+    e.preventDefault();
+    fetchData();
   };
 
   if (!loggedIn) {
@@ -79,6 +126,24 @@ const AdminPage = () => {
       <div className="max-w-6xl mx-auto">
         <h2 className="text-3xl font-bold mb-8 text-blue-800">Admin Dashboard</h2>
 
+        <section className="mb-10 bg-white p-6 rounded-lg shadow border border-gray-200">
+  <h3 className="text-2xl font-semibold mb-4 text-purple-800">📊 Summary</h3>
+  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-lg">
+    <div className="bg-purple-50 p-4 rounded-md">
+      <strong>Total Payments:</strong> ₦{summary.totalPayments.toLocaleString()}
+    </div>
+    <div className="bg-purple-50 p-4 rounded-md">
+      <strong>Total Withdrawn:</strong> ₦{summary.totalWithdrawn.toLocaleString()}
+    </div>
+    <div className="bg-purple-50 p-4 rounded-md">
+      <strong>Balance:</strong> ₦{summary.balance.toLocaleString()}
+    </div>
+    
+  </div>
+</section>
+
+
+        {/* Withdrawal Form */}
         <section className="mb-10 bg-white p-6 rounded-lg shadow">
           <h3 className="text-2xl font-semibold mb-4 text-green-700">➕ Add Withdrawal</h3>
           <form onSubmit={handleWithdraw} className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -115,6 +180,61 @@ const AdminPage = () => {
           </form>
         </section>
 
+        {/* Filters */}
+        <section className="mb-6 bg-white p-6 rounded-lg shadow">
+          <h3 className="text-xl font-semibold mb-4 text-gray-700">🔍 Filter Transactions</h3>
+          <form onSubmit={handleFilterSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <input
+              type="text"
+              name="name"
+              placeholder="Filter by Name"
+              value={filters.name}
+              onChange={handleFilterChange}
+              className="px-4 py-2 border rounded-md"
+            />
+            <input
+              type="text"
+              name="reference"
+              placeholder="Filter by Reference"
+              value={filters.reference}
+              onChange={handleFilterChange}
+              className="px-4 py-2 border rounded-md"
+            />
+            <input
+              type="date"
+              name="from"
+              value={filters.from}
+              onChange={handleFilterChange}
+              className="px-4 py-2 border rounded-md"
+            />
+            <input
+              type="date"
+              name="to"
+              value={filters.to}
+              onChange={handleFilterChange}
+              className="px-4 py-2 border rounded-md"
+            />
+            <button
+              type="submit"
+              className="md:col-span-4 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+            >
+              Apply Filters
+              </button>
+  </form>
+
+  <div className="flex justify-end">
+    <button
+      onClick={handleExportPDF}
+      className="bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700 transition"
+    >
+      🧾 Export to PDF
+    </button>
+    </div>
+
+
+        </section>
+
+        {/* Transactions */}
         <section className="mb-10 bg-white p-6 rounded-lg shadow">
           <h3 className="text-2xl font-semibold mb-4 text-blue-700">💳 Transactions</h3>
           {transactions.length > 0 ? (
@@ -124,9 +244,9 @@ const AdminPage = () => {
                   key={tx._id}
                   className="p-4 border border-blue-200 bg-blue-50 rounded-md"
                 >
-                  <strong>{tx.name}</strong> paid ₦{tx.amount.toLocaleString()} on{' '}
+                  <strong>{tx.name}</strong> paid ₦{tx.amount.toLocaleString()} for <em>{tx.purpose}</em> on{' '}
                   <span className="text-sm text-gray-600">
-                    {new Date(tx.date).toLocaleDateString()}
+                    {new Date(tx.createdAt).toLocaleDateString()}
                   </span>
                 </li>
               ))}
@@ -136,6 +256,7 @@ const AdminPage = () => {
           )}
         </section>
 
+        {/* Withdrawals */}
         <section className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-2xl font-semibold mb-4 text-red-700">📤 Withdrawals</h3>
           {withdrawals.length > 0 ? (
@@ -164,5 +285,3 @@ const AdminPage = () => {
 };
 
 export default AdminPage;
-// Compare this snippet from frontend/nacos/src/App.jsx:
-// import React from 'react';

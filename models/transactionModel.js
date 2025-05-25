@@ -13,6 +13,10 @@ const transactionSchema = new mongoose.Schema({
         type: Number,
         required: true,
     },
+    purpose: {
+        type: String,
+        required: true,
+    },
     reference: {
         type: String,
         required: true,
