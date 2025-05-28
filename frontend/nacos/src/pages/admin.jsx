@@ -9,19 +9,46 @@ const AdminPage = () => {
   const [withdrawForm, setWithdrawForm] = useState({ amount: '', purpose: '', madeBy: '' });
   const [filters, setFilters] = useState({ name: '', reference: '', from: '', to: '' });
   const [message, setMessage] = useState('');
+  const [summary, setSummary] = useState({ totalPayments: 0, totalWithdrawn: 0, balance: 0 });
+
+  // Check session on mount
+  useEffect(() => {
+    axios.get('http://localhost:3000/api/admin/check', { withCredentials: true })
+      .then(res => {
+        if (res.data.loggedIn) {
+          setLoggedIn(true);
+          fetchData();
+        }
+      })
+      .catch(() => setLoggedIn(false));
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:3000/api/admin/login', { password });
+      const res = await axios.post('http://localhost:3000/api/admin/login', { password }, { withCredentials: true });
       if (res.data.success) {
         setLoggedIn(true);
+        setMessage('');
         fetchData();
       } else {
         setMessage('Invalid password');
       }
-    } catch (err) {
+    } catch {
       setMessage('Login failed');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await axios.post('http://localhost:3000/api/admin/logout', {}, { withCredentials: true });
+      setLoggedIn(false);
+      setTransactions([]);
+      setWithdrawals([]);
+      setPassword('');
+      setMessage('Logged out');
+    } catch {
+      setMessage('Logout failed');
     }
   };
 
@@ -34,53 +61,42 @@ const AdminPage = () => {
       if (from) params.from = from;
       if (to) params.to = to;
 
-      const txRes = await axios.get('http://localhost:3000/api/admin/transactions', { params });
-      const wdRes = await axios.get('http://localhost:3000/api/withdrawals', { params });
-      
+      const txRes = await axios.get('http://localhost:3000/api/admin/transactions', { params, withCredentials: true });
+      const wdRes = await axios.get('http://localhost:3000/api/withdrawals', { params, withCredentials: true });
 
       setTransactions(txRes.data);
       setWithdrawals(wdRes.data);
       fetchSummary();
-
-    } catch (err) {
+    } catch {
       setMessage('Failed to load data');
     }
   };
 
-  const [summary, setSummary] = useState({ totalPayments: 0, totalWithdrawn: 0, balance: 0 });
+  const fetchSummary = async () => {
+    try {
+      const res = await axios.get('http://localhost:3000/api/withdrawals/summary', { withCredentials: true });
+      setSummary(res.data);
+    } catch {
+      console.error('Failed to fetch summary');
+    }
+  };
 
-const fetchSummary = async () => {
-  try {
-    const res = await axios.get('http://localhost:3000/api/withdrawals/summary');
-    setSummary(res.data);
-  } catch (err) {
-    console.error('Failed to fetch summary:', err);
-  }
-};
-
-const handleExportPDF = () => {
-  const fromParam = filters.from ? `from=${filters.from}` : '';
-  const toParam = filters.to ? `to=${filters.to}` : '';
-  const query = [fromParam, toParam].filter(Boolean).join('&');
-  const url = `http://localhost:3000/api/admin/export-pdf${query ? `?${query}` : ''}`;
-
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', 'statement.pdf');
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
-
+  const handleExportPDF = () => {
+    const fromParam = filters.from ? `from=${filters.from}` : '';
+    const toParam = filters.to ? `to=${filters.to}` : '';
+    const query = [fromParam, toParam].filter(Boolean).join('&');
+    const url = `http://localhost:3000/api/admin/export-pdf${query ? `?${query}` : ''}`;
+    window.open(url, '_blank'); // open in new tab to send cookies properly
+  };
 
   const handleWithdraw = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:3000/api/withdrawals/create', withdrawForm);
+      await axios.post('http://localhost:3000/api/withdrawals/create', withdrawForm, { withCredentials: true });
       setMessage('✅ Withdrawal added');
       setWithdrawForm({ amount: '', purpose: '', madeBy: '' });
       fetchData();
-    } catch (err) {
+    } catch {
       setMessage('❌ Error adding withdrawal');
     }
   };
@@ -124,24 +140,30 @@ const handleExportPDF = () => {
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="max-w-6xl mx-auto">
-        <h2 className="text-3xl font-bold mb-8 text-blue-800">Admin Dashboard</h2>
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-3xl font-bold text-blue-800">Admin Dashboard</h2>
+          <button
+            onClick={handleLogout}
+            className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition"
+          >
+            Logout
+          </button>
+        </div>
 
         <section className="mb-10 bg-white p-6 rounded-lg shadow border border-gray-200">
-  <h3 className="text-2xl font-semibold mb-4 text-purple-800">📊 Summary</h3>
-  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-lg">
-    <div className="bg-purple-50 p-4 rounded-md">
-      <strong>Total Payments:</strong> ₦{summary.totalPayments.toLocaleString()}
-    </div>
-    <div className="bg-purple-50 p-4 rounded-md">
-      <strong>Total Withdrawn:</strong> ₦{summary.totalWithdrawn.toLocaleString()}
-    </div>
-    <div className="bg-purple-50 p-4 rounded-md">
-      <strong>Balance:</strong> ₦{summary.balance.toLocaleString()}
-    </div>
-    
-  </div>
-</section>
-
+          <h3 className="text-2xl font-semibold mb-4 text-purple-800">📊 Summary</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-lg">
+            <div className="bg-purple-50 p-4 rounded-md">
+              <strong>Total Payments:</strong> ₦{summary.totalPayments.toLocaleString()}
+            </div>
+            <div className="bg-purple-50 p-4 rounded-md">
+              <strong>Total Withdrawn:</strong> ₦{summary.totalWithdrawn.toLocaleString()}
+            </div>
+            <div className="bg-purple-50 p-4 rounded-md">
+              <strong>Balance:</strong> ₦{summary.balance.toLocaleString()}
+            </div>
+          </div>
+        </section>
 
         {/* Withdrawal Form */}
         <section className="mb-10 bg-white p-6 rounded-lg shadow">
@@ -183,7 +205,7 @@ const handleExportPDF = () => {
         {/* Filters */}
         <section className="mb-6 bg-white p-6 rounded-lg shadow">
           <h3 className="text-xl font-semibold mb-4 text-gray-700">🔍 Filter Transactions</h3>
-          <form onSubmit={handleFilterSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <form onSubmit={handleFilterSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <input
               type="text"
               name="name"
@@ -216,22 +238,18 @@ const handleExportPDF = () => {
             />
             <button
               type="submit"
-              className="md:col-span-4 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition"
             >
               Apply Filters
-              </button>
-  </form>
-
-  <div className="flex justify-end">
-    <button
-      onClick={handleExportPDF}
-      className="bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700 transition"
-    >
-      🧾 Export to PDF
-    </button>
-    </div>
-
-
+            </button>
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              className="bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700 transition"
+            >
+              🧾 Export to PDF
+            </button>
+          </form>
         </section>
 
         {/* Transactions */}
